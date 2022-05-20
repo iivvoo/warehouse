@@ -20,6 +20,10 @@ type entry[T any] struct {
 	value T
 }
 
+func (e *entry[T]) Expired() bool {
+	return !e.exp.IsZero() || e.exp.Before(time.Now())
+}
+
 type warehouse[K comparable, T any] struct {
 	cache      map[K]*entry[T]
 	expiration time.Duration
@@ -52,18 +56,32 @@ func (w *warehouse[K, T]) Get(k K) T {
 	}
 
 	// check if it expired
-	if e.exp.IsZero() || e.exp.After(time.Now()) {
+	if e.Expired() {
 		return e.value
 	}
 	return genx.Zero[T]()
 }
 
+func (w *warehouse[K, T]) GetSetWithExpiration(k K, callable func(k K) T, expiration time.Duration) T {
+	if e := w.cache[k]; e != nil && !e.Expired() {
+		return e.value
+	}
+
+	v := callable(k)
+
+	w.SetWithExpiration(k, v, expiration)
+	return v
+}
+
+func (w *warehouse[K, T]) GetSet(k K, callable func(k K) T) T {
+	return w.GetSetWithExpiration(k, callable, w.expiration)
+}
+
 func (w *warehouse[K, T]) Cleanup() {
 	// This touches all entries during each run which is not very efficient for huge caches.
 	for k, v := range w.cache {
-		if v.exp.IsZero() || v.exp.After(time.Now()) {
-			continue
+		if v.Expired() {
+			delete(w.cache, k)
 		}
-		delete(w.cache, k)
 	}
 }
