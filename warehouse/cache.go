@@ -16,10 +16,19 @@ func (e *entry[T]) Expired() bool {
 }
 
 type warehouse[K comparable, T any] struct {
-	cache      map[K]*entry[T]
+	cache      map[K]*entry[T] // mutex
 	expiration time.Duration
 }
 
+// type option[T any] struct {
+// 	param string
+// 	value T
+// }
+//
+// func Option[T any](param string, value T) *option[T] {
+// 	return &option[T]{param, value}
+// }
+//
 func New[K comparable, T any]() *warehouse[K, T] {
 	return &warehouse[K, T]{
 		cache:      make(map[K]*entry[T]),
