@@ -35,7 +35,7 @@ func TestWarehouse(t *testing.T) {
 
 		assert.Equal(t, "", cache.Get("hello"))
 	})
-	t.Run("Test GetSet with hit", func(t *testing.T) {
+	t.Run("Test GetSet with miss", func(t *testing.T) {
 		cache := New[string, string]()
 
 		defer cache.Stop()
@@ -43,5 +43,19 @@ func TestWarehouse(t *testing.T) {
 		cache.GetSet("hello", func(k string) string { return "world" })
 
 		assert.Equal(t, "world", cache.Get("hello"))
+	})
+	t.Run("Test GetSet with hit", func(t *testing.T) {
+		cache := New[string, string]()
+
+		defer cache.Stop()
+
+		called := false
+
+		cache.Set("hello", "world")
+		cache.GetSet("hello", func(k string) string { called = true; return "gopher" })
+
+		// Value should not be updated, method should not have been called
+		assert.Equal(t, "world", cache.Get("hello"))
+		assert.False(t, called)
 	})
 }
