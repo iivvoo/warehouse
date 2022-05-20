@@ -3,8 +3,6 @@ package warehouse
 import (
 	"sync"
 	"time"
-
-	"github.com/iivvoo/warehouse/genx"
 )
 
 type entry[T any] struct {
@@ -57,19 +55,18 @@ func (w *warehouse[K, T]) Set(k K, v T) {
 }
 
 func (w *warehouse[K, T]) Get(k K) T { // bool for found?
+	var zero T
+
 	w.mut.RLock()
 	w.mut.RUnlock()
 
 	e := w.cache[k]
 
-	if e == nil {
-		return genx.Zero[T]()
+	if e == nil || e.Expired() {
+		return zero
 	}
 
-	if !e.Expired() {
-		return e.value
-	}
-	return genx.Zero[T]()
+	return e.value
 }
 
 // implement HasKey
