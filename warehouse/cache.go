@@ -2,6 +2,7 @@ package warehouse
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/iivvoo/warehouse/genx"
@@ -20,6 +21,7 @@ type warehouse[K comparable, T any] struct {
 	cache      map[K]*entry[T] // mutex
 	expiration time.Duration
 	ticker     *time.Ticker
+	mut        sync.RWMutex
 }
 
 const DefaultTimeout = 0 // never expires
@@ -41,6 +43,9 @@ func NewWithExpiration[K comparable, T any](exp time.Duration) *warehouse[K, T] 
 }
 
 func (w *warehouse[K, T]) SetWithExpiration(k K, v T, expiration time.Duration) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+
 	expires := time.Time{} // never
 	if expiration != 0 {
 		expires = time.Now().Add(expiration)
@@ -53,6 +58,9 @@ func (w *warehouse[K, T]) Set(k K, v T) {
 }
 
 func (w *warehouse[K, T]) Get(k K) T { // bool for found?
+	w.mut.RLock()
+	w.mut.RUnlock()
+
 	e := w.cache[k]
 
 	if e == nil {
@@ -84,6 +92,8 @@ func (w *warehouse[K, T]) GetSet(k K, callable func(k K) T) T {
 }
 
 func (w *warehouse[K, T]) Cleanup() {
+	w.mut.Lock()
+	defer w.mut.Unlock()
 	// This touches all entries during each run which is not very efficient for huge caches.
 	for k, v := range w.cache {
 		if v.Expired() {
