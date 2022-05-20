@@ -52,8 +52,18 @@ func (w *warehouse[K, T]) Get(k K) T {
 	}
 
 	// check if it expired
-	if !e.exp.IsZero() || e.exp.After(time.Now()) {
-		return genx.Zero[T]()
+	if e.exp.IsZero() || e.exp.After(time.Now()) {
+		return e.value
 	}
-	return e.value
+	return genx.Zero[T]()
+}
+
+func (w *warehouse[K, T]) Cleanup() {
+	// This touches all entries during each run which is not very efficient for huge caches.
+	for k, v := range w.cache {
+		if v.exp.IsZero() || v.exp.After(time.Now()) {
+			continue
+		}
+		delete(w.cache, k)
+	}
 }

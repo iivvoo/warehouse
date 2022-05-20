@@ -12,4 +12,5 @@ func main() {
 	cache := warehouse.New[string, string]()
 	cache.Set("foo", "hello")
 	fmt.Println(cache, cache.Get("foo"))
+	cache.Cleanup()
 }
