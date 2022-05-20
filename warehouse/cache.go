@@ -18,7 +18,7 @@ func (e *entry[T]) Expired() bool {
 }
 
 type warehouse[K comparable, T any] struct {
-	cache      map[K]*entry[T] // mutex
+	cache      map[K]*entry[T]
 	expiration time.Duration
 	ticker     *time.Ticker
 	mut        sync.RWMutex
