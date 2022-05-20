@@ -1,7 +1,6 @@
 package warehouse
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -20,8 +19,7 @@ func (e *entry[T]) Expired() bool {
 type warehouse[K comparable, T any] struct {
 	cache      map[K]*entry[T] // mutex
 	expiration time.Duration
-	loopCtx    context.Context
-	cancel     context.CancelFunc
+	ticker     *time.Ticker
 }
 
 const DefaultTimeout = 0 // never expires
@@ -31,12 +29,10 @@ func New[K comparable, T any]() *warehouse[K, T] {
 }
 
 func NewWithExpiration[K comparable, T any](exp time.Duration) *warehouse[K, T] {
-	ctx, cancel := context.WithCancel(context.TODO())
 	w := &warehouse[K, T]{
 		cache:      make(map[K]*entry[T]),
 		expiration: exp,
-		loopCtx:    ctx,
-		cancel:     cancel,
+		ticker:     time.NewTicker(time.Minute),
 	}
 
 	go w.Loop()
@@ -97,18 +93,12 @@ func (w *warehouse[K, T]) Cleanup() {
 }
 
 func (w *warehouse[K, T]) Loop() {
-loop:
-	for {
-		select {
-		case <-w.loopCtx.Done():
-			break loop
-		case <-time.After(time.Second * 5):
-		}
+	for range w.ticker.C {
 		w.Cleanup()
 	}
 }
 
 func (w *warehouse[K, T]) Stop() {
 	// terminates Cleanup Loop
-	w.cancel()
+	w.ticker.Stop()
 }
