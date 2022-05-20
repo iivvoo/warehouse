@@ -54,7 +54,7 @@ func (w *warehouse[K, T]) Set(k K, v T) {
 	w.SetWithExpiration(k, v, w.expiration)
 }
 
-func (w *warehouse[K, T]) Get(k K) T { // bool for found?
+func (w *warehouse[K, T]) GetFound(k K) (T, bool) {
 	var zero T
 
 	w.mut.RLock()
@@ -63,19 +63,26 @@ func (w *warehouse[K, T]) Get(k K) T { // bool for found?
 	e := w.cache[k]
 
 	if e == nil || e.Expired() {
-		return zero
+		return zero, false
 	}
 
-	return e.value
+	return e.value, true
+}
+
+func (w *warehouse[K, T]) Get(k K) T {
+	v, _ := w.GetFound(k)
+	return v
 }
 
 // implement HasKey
+func (w *warehouse[K, T]) HasKey(k K) bool {
+	_, found := w.GetFound(k)
+	return found
+}
 
 func (w *warehouse[K, T]) GetSetWithExpiration(k K, callable func(k K) T, expiration time.Duration) T {
-	w.mut.Lock()
-	defer w.mut.Unlock()
-	if e := w.cache[k]; e != nil && !e.Expired() {
-		return e.value
+	if v, found := w.GetFound(k); found {
+		return v
 	}
 
 	v := callable(k)
