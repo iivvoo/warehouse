@@ -72,6 +72,8 @@ func (w *warehouse[K, T]) Get(k K) T { // bool for found?
 // implement HasKey
 
 func (w *warehouse[K, T]) GetSetWithExpiration(k K, callable func(k K) T, expiration time.Duration) T {
+	w.mut.Lock()
+	defer w.mut.Unlock()
 	if e := w.cache[k]; e != nil && !e.Expired() {
 		return e.value
 	}
