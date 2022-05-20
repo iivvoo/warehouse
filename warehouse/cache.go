@@ -6,15 +6,6 @@ import (
 	"github.com/iivvoo/warehouse/genx"
 )
 
-/*
-
-
-   c := warehouse[string].New()
-
-   // Should key also be generic? We can do that and optionally define a StringKeyCache
-
-*/
-
 type entry[T any] struct {
 	exp   time.Time
 	value T
