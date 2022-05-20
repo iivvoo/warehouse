@@ -12,7 +12,7 @@ type entry[T any] struct {
 }
 
 func (e *entry[T]) Expired() bool {
-	return !e.exp.IsZero() || e.exp.Before(time.Now())
+	return !(e.exp.IsZero() || e.exp.After(time.Now()))
 }
 
 type warehouse[K comparable, T any] struct {
@@ -20,19 +20,16 @@ type warehouse[K comparable, T any] struct {
 	expiration time.Duration
 }
 
-// type option[T any] struct {
-// 	param string
-// 	value T
-// }
-//
-// func Option[T any](param string, value T) *option[T] {
-// 	return &option[T]{param, value}
-// }
-//
+const DefaultTimeout = 0 // never expires
+
 func New[K comparable, T any]() *warehouse[K, T] {
+	return NewWithExpiration[K, T](DefaultTimeout)
+}
+
+func NewWithExpiration[K comparable, T any](exp time.Duration) *warehouse[K, T] {
 	return &warehouse[K, T]{
 		cache:      make(map[K]*entry[T]),
-		expiration: 0,
+		expiration: exp,
 	}
 }
 
