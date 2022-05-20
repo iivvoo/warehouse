@@ -1,6 +1,8 @@
 package warehouse
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/iivvoo/warehouse/genx"
@@ -18,6 +20,8 @@ func (e *entry[T]) Expired() bool {
 type warehouse[K comparable, T any] struct {
 	cache      map[K]*entry[T] // mutex
 	expiration time.Duration
+	loopCtx    context.Context
+	cancel     context.CancelFunc
 }
 
 const DefaultTimeout = 0 // never expires
@@ -27,10 +31,17 @@ func New[K comparable, T any]() *warehouse[K, T] {
 }
 
 func NewWithExpiration[K comparable, T any](exp time.Duration) *warehouse[K, T] {
-	return &warehouse[K, T]{
+	ctx, cancel := context.WithCancel(context.TODO())
+	w := &warehouse[K, T]{
 		cache:      make(map[K]*entry[T]),
 		expiration: exp,
+		loopCtx:    ctx,
+		cancel:     cancel,
 	}
+
+	go w.Loop()
+
+	return w
 }
 
 func (w *warehouse[K, T]) SetWithExpiration(k K, v T, expiration time.Duration) {
@@ -45,19 +56,21 @@ func (w *warehouse[K, T]) Set(k K, v T) {
 	w.SetWithExpiration(k, v, w.expiration)
 }
 
-func (w *warehouse[K, T]) Get(k K) T {
+func (w *warehouse[K, T]) Get(k K) T { // bool for found?
 	e := w.cache[k]
 
 	if e == nil {
 		return genx.Zero[T]()
 	}
 
-	// check if it expired
-	if e.Expired() {
+	if !e.Expired() {
 		return e.value
 	}
+	fmt.Println("C")
 	return genx.Zero[T]()
 }
+
+// implement HasKey
 
 func (w *warehouse[K, T]) GetSetWithExpiration(k K, callable func(k K) T, expiration time.Duration) T {
 	if e := w.cache[k]; e != nil && !e.Expired() {
@@ -81,4 +94,21 @@ func (w *warehouse[K, T]) Cleanup() {
 			delete(w.cache, k)
 		}
 	}
+}
+
+func (w *warehouse[K, T]) Loop() {
+loop:
+	for {
+		select {
+		case <-w.loopCtx.Done():
+			break loop
+		case <-time.After(time.Second * 5):
+		}
+		w.Cleanup()
+	}
+}
+
+func (w *warehouse[K, T]) Stop() {
+	// terminates Cleanup Loop
+	w.cancel()
 }

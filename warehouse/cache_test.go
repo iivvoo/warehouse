@@ -7,8 +7,20 @@ import (
 )
 
 func TestWarehouse(t *testing.T) {
-	assert.True(t, false)
+	t.Run("Test get/set with hit", func(t *testing.T) {
+		cache := New[string, string]()
 
-	cache := New[string, any]()
-	cache.Set("x", 1)
+		defer cache.Stop()
+
+		cache.Set("hello", "world")
+
+		assert.Equal(t, "world", cache.Get("hello"))
+	})
+	t.Run("Test get/set with miss", func(t *testing.T) {
+		cache := New[string, string]()
+
+		defer cache.Stop()
+
+		assert.Equal(t, "", cache.Get("hello")) // "" is the Zero value for strings
+	})
 }
