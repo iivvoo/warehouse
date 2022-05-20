@@ -1,7 +1,6 @@
 package warehouse
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -70,7 +69,6 @@ func (w *warehouse[K, T]) Get(k K) T { // bool for found?
 	if !e.Expired() {
 		return e.value
 	}
-	fmt.Println("C")
 	return genx.Zero[T]()
 }
 
